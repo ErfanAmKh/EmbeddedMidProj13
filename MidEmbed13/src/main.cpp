@@ -10,9 +10,14 @@ int x = 0 ;
 String get_UID() ; 
 void add_new_user(String UID, String Username) ; 
 void print_eeprom() ; 
-void get_eeprom_counter() ; 
-void set_eeprom_counter() ; 
+void read_eeprom_counter() ; 
+void write_eeprom_counter() ; 
 void empty_eeprom() ; 
+bool UID_exist(String UID) ; 
+void change_user_state(String UID) ; 
+void delete_user(String UID) ; 
+void shift_eeprom(int statrting_point) ; 
+
 
 
 void setup()
@@ -22,7 +27,7 @@ void setup()
   SPI.begin(); 
   rfid.PCD_Init();
 
-  get_eeprom_counter() ;
+  read_eeprom_counter() ;
   Serial.print("EEPROM Counter:   ") ; 
   Serial.println(eeprom_counter) ; 
 
@@ -35,7 +40,10 @@ void loop()
   if (temp != "NOCARD")
   {
     Serial.println(temp) ; 
-    add_new_user(temp, "erfan") ; 
+    // add_new_user(temp, "erfan") ; 
+    // UID_exist(temp) ; 
+    // change_user_state(temp) ; 
+    delete_user(temp) ; 
   }
   if (x == 200)
   {
@@ -66,6 +74,11 @@ String get_UID()
 
 void add_new_user(String UID, String Username)
 {
+  if (UID_exist(UID))
+  {
+    Serial.println(" User Already Exists! ") ; 
+    return ; 
+  }
   // adding UID
   for (int i=0 ; i<15 ; i++)
   {
@@ -104,7 +117,7 @@ void add_new_user(String UID, String Username)
   EEPROM.commit() ; 
   vTaskDelay(50) ; 
 
-  set_eeprom_counter() ; 
+  write_eeprom_counter() ; 
 
   Serial.println("User Added Successfully.") ; 
   
@@ -138,19 +151,19 @@ void print_eeprom()
 
     Serial.print("   ") ;
 
-    Serial.println( (char)EEPROM.read(32*i+31) )  ; 
+    Serial.println( EEPROM.read(32*i+31) )  ; 
     vTaskDelay(5) ; 
   }
 }
 
-void get_eeprom_counter()
+void read_eeprom_counter()
 {
   uint8_t a = EEPROM.read(510) ; 
   uint8_t b = EEPROM.read(511) ; 
   eeprom_counter = (int) (a+b) ; 
 }
 
-void set_eeprom_counter()
+void write_eeprom_counter()
 {
   if (eeprom_counter<=255)
   {
@@ -173,5 +186,113 @@ void empty_eeprom()
   }
   EEPROM.commit() ; 
   vTaskDelay(50) ; 
+}
+
+bool UID_exist(String UID)
+{
+  int dismatch_count = 0 ; 
+  for (int i=0 ; i<15 ; i++)
+  {
+    for (int j=0 ; j<UID.length() ; j++)
+    {
+      if (UID[j] != (char)EEPROM.read(32*i+j))
+      {
+        dismatch_count++ ; 
+        break ; 
+      }
+    }
+  }
+  Serial.print("dismatch: ") ; 
+  Serial.println(dismatch_count) ; 
+  if (dismatch_count == 15)
+  {
+    Serial.println("false") ; 
+    return false ; 
+  }
+  else 
+  {
+    Serial.println("true") ; 
+    return true ; 
+  }
+}
+
+void change_user_state(String UID)
+{
+  int match_count = 0 ; 
+  for (int i=0 ; i<15 ; i++)
+  {
+    for (int j=0 ; j<UID.length() ; j++)
+    {
+      if (UID[j] == (char)EEPROM.read(32*i+j))
+      {
+        match_count++ ; 
+      }
+    }
+    Serial.print("match count: ") ; 
+    Serial.println(match_count) ; 
+    if (match_count == UID.length())
+    {
+      if (EEPROM.read(32*i+31) == 0)
+      {
+        EEPROM.write(32*i+31, 1) ; 
+      }
+      else 
+      {
+        EEPROM.write(32*i+31, 0) ; 
+      }
+      break ; 
+    }
+    match_count = 0 ; 
+  }
+}
+
+void delete_user(String UID)
+{
+  int match_count = 0 ; 
+  for (int i=0 ; i<15 ; i++)
+  {
+    for (int j=0 ; j<UID.length() ; j++)
+    {
+      if (UID[j] == (char)EEPROM.read(32*i+j))
+      {
+        match_count++ ; 
+      }
+    }
+    Serial.print("match count for delete: ") ; 
+    Serial.println(match_count) ; 
+    if (match_count == UID.length())
+    {
+      if (eeprom_counter >= 32)
+      {
+        eeprom_counter -= 32 ; 
+      }
+      Serial.print("eeprom counter = ") ; 
+      Serial.println(eeprom_counter) ; 
+      write_eeprom_counter() ; 
+      Serial.println("after write eeprom counter") ; 
+      for (int j=32*i ; j<32*i+32 ; j++)
+      {
+        EEPROM.write(j, 0) ; 
+      }
+      EEPROM.commit() ; 
+      Serial.println("after make it free") ; 
+      vTaskDelay(100) ; 
+      shift_eeprom( 32*(i+1) ) ; 
+      Serial.println("after updating it") ; 
+      break ; 
+    }
+    match_count = 0 ; 
+  }
+}
+
+void shift_eeprom(int statrting_point)
+{
+  for (int i=statrting_point ; i<eeprom_counter ; i++)
+  {
+    uint8_t a = EEPROM.read(i) ; 
+    EEPROM.write(i-32, a) ; 
+    vTaskDelay(1) ; 
+  }
+  EEPROM.commit() ; 
 }
 
