@@ -114,13 +114,17 @@ void handle_personnel_add(AsyncWebServerRequest * request){
     //Serial.println(name);
     if(name.isEmpty())
     {
-        request->send_P(401, "text/plain", "name is empty");
+        snprintf(&message_html[229], 22, "name cannot be empty.");
+        message_html[250] = ' ';
+        request->send_P(200, "text/html", message_html);
         //Serial.println("error : user name is empty ");
         return;
     }
     else if(name.length() > 40)
     {
-        request->send_P(401, "text/plain", "name is too long");
+        snprintf(&message_html[229], 22, "name is too long.    ");
+        message_html[250] = ' ';
+        request->send_P(200, "text/html", message_html);
         //Serial.println("error : user name is too long ");
         return;
     }
@@ -128,7 +132,9 @@ void handle_personnel_add(AsyncWebServerRequest * request){
     // //check if user name exist
     if(name_exist(name))
     {
-        request->send_P(401, "text/plain", "user name exists , try a different name");
+        snprintf(&message_html[229], 22, "name already exists. ");
+        message_html[250] = ' ';
+        request->send_P(200, "text/html", message_html);
         //Serial.println("error : user name exists ");
         return;
     }
@@ -142,7 +148,9 @@ void handle_personnel_add(AsyncWebServerRequest * request){
         {
             UID = temp;
             if(UID_exist(UID)){
-                request->send_P(401, "text/plain", "user UID exists , try a different card");
+                snprintf(&message_html[230], 22, "UID already exists.  ");
+                message_html[251] = ' ';
+                request->send_P(200, "text/html", message_html);
                 //Serial.println("error : user UID exists ");
                 return;                
             }
@@ -163,7 +171,9 @@ void handle_personnel_delete(AsyncWebServerRequest * request){
     String name = request->arg("NAME");
     if(name.isEmpty())
     {
-        request->send_P(401, "text/plain" , "User name is empty");
+        snprintf(&message_html[229], 22, "name can not be empty");
+        message_html[250] = ' ';
+        request->send_P(200, "text/html", message_html);
         //Serial.println("error : User name is empty");
         return;
     }
@@ -172,7 +182,8 @@ void handle_personnel_delete(AsyncWebServerRequest * request){
     //check if username exist
     if(!name_exist(name))
     {
-        request->send_P(401, "text/plain" , "User name not exist");
+        snprintf(&message_html[229], 22, "name already exists. ");
+        message_html[250] = ' ';
         //Serial.println("error : User name not exist");
         return;
     }
